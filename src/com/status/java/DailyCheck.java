@@ -2,7 +2,9 @@ package com.status.java;
 
 import java.io.*;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
 
 /**
  * Created by fuat on 2/10/2017.
@@ -11,8 +13,8 @@ public class DailyCheck {
 
     public static void main(String args[]) {
 
-        if (args.length < 2) {
-            System.out.println("Enter property file name: <jar file> <connection file> <property file>");
+        if (args.length < 3) {
+            System.out.println("Enter property file name: <jar file> <connection file> <property file> <output dir>");
         }
         execute(args);
 
@@ -27,11 +29,18 @@ public class DailyCheck {
         InputStream input1 = null;
         Connection connection = null;
         HashMap<String, String> hashMap = new HashMap<String, String>();
+        File output = null;
+        FileWriter fileWriter = null;
+        BufferedWriter bufferedWriter = null;
 
         try {
 
             input1 = new FileInputStream(args[0]);
             input = new FileInputStream(args[1]);
+            //write the query result to output file.
+            output = new File(args[2]);
+            fileWriter  = new FileWriter(output);
+            bufferedWriter = new BufferedWriter(fileWriter);
             properties.load(input);
             properties1.load(input1);
 
@@ -52,6 +61,13 @@ public class DailyCheck {
             //Create statement for query execution.
             Statement statement = connection.createStatement();
             //iterate over the key and value which is the table name and query in the property file.
+
+            Calendar cal = Calendar.getInstance(); // creates calendar
+            cal.setTime(new Date()); // sets calendar time/date
+            SimpleDateFormat ft =
+                    new SimpleDateFormat("yyyy/MM/dd 'at' hh:mm:ss a ");
+            bufferedWriter.write("Date: "+ft.format(cal.getTime()));
+            bufferedWriter.newLine();
             for (String key : hashMap.keySet()) {
 
                 //execute the query.
@@ -61,32 +77,41 @@ public class DailyCheck {
                 //get number of columns for the resultset.
                 int numOfColumn = resultSetMetaData.getColumnCount();
                 //print table name
-                System.out.println("Table: " + key.substring(6));
+                bufferedWriter.newLine();
+                bufferedWriter.write("\n############################  "+key.substring(6)+"  ###########################");
+                bufferedWriter.newLine();
 
                 StringBuilder stringBuilder = new StringBuilder();
 
 
                 //get column names of the table.
+                stringBuilder.append("|");
                 for (int i = 1; i <= numOfColumn; i++) {
                     stringBuilder.append(resultSetMetaData.getColumnName(i));
-                    stringBuilder.append(", ");
+                    stringBuilder.append("|");
 
                 }
 
-                System.out.println(stringBuilder.toString());
+                bufferedWriter.write(stringBuilder.toString());
+                bufferedWriter.newLine();
+                bufferedWriter.write("--------------------------------------------------------------------------");
+                bufferedWriter.newLine();
                 //prints the rows value of the resultset.
                 while (resultSet.next()) {
 
                     StringBuilder stringBuilder1 = new StringBuilder();
+                    stringBuilder1.append("|");
                     for (int column = 1; column <= numOfColumn; column++) {
 
                         stringBuilder1.append(resultSet.getObject(column));
-                        stringBuilder1.append(", ");
+                        stringBuilder1.append("|");
 
                     }
 
-                    System.out.println(stringBuilder1.toString());
+                    bufferedWriter.write(stringBuilder1.toString());
+                    bufferedWriter.newLine();
                 }
+
 
             }
         } catch (IOException ex) {
@@ -101,6 +126,9 @@ public class DailyCheck {
                     input.close();
                     input1.close();
                     connection.close();
+                    bufferedWriter.close();
+                    fileWriter.close();
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (SQLException e) {
